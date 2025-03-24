@@ -1,46 +1,42 @@
-const apiKey = "YOUR_OPENWEATHER_API_KEY"; // Replace with your actual API key
-const searchBtn = document.getElementById("searchBtn");
-const cityInput = document.getElementById("cityInput");
-const weatherResult = document.getElementById("weatherResult");
-
-searchBtn.addEventListener("click", () => {
-    const city = cityInput.value.trim();
-    if (city === "") {
-        alert("Please enter a city name.");
+function fetchWeather() {
+    const city = document.getElementById("city").value.trim(); // Fixed: `.trim()` instead of `.tris()`
+    
+    if (!city) { // Fixed: Corrected if condition
+        document.getElementById("weather").innerText = "Please enter a city.";
         return;
     }
-    fetchWeather(city);
-});
 
-async function fetchWeather(city) {
-    const apiUrl = `https://api.openweathermap.org/data/2.5/weather?q=${city}&units=metric&appid=${apiKey}`;
+    const geoApiUrl = `https://geocoding.api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&format=json`; // Fixed: Corrected URL syntax
 
-    try {
-        const response = await fetch(apiUrl);
-        if (!response.ok) {
-            throw new Error("City not found. Please try again.");
-        }
-        const data = await response.json();
-        displayWeather(data);
-    } catch (error) {
-        weatherResult.innerHTML = `<p class="error">${error.message}</p>`;
-        weatherResult.style.display = "block";
-    }
+    fetch(geoApiUrl)
+        .then(response => response.json())
+        .then(data => {
+            if (!data.results || data.results.length === 0) {
+                document.getElementById("weather").innerText = "City not found.";
+                return;
+            }
+
+            const lat = data.results[0].latitude;
+            const lon = data.results[0].longitude;
+
+            const weatherApiUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`;
+
+            return fetch(weatherApiUrl);
+        })
+        .then(response => response.json())
+        .then(weatherData => {
+            if (!weatherData || !weatherData.current_weather) {
+                document.getElementById("weather").innerText = "Weather data not available.";
+                return;
+            }
+
+            const { temperature, weathercode } = weatherData.current_weather;
+            document.getElementById("weather").innerText = `Temperature: ${temperature}°C, Condition: ${weathercode}`;
+        })
+        .catch(error => {
+            console.error("Error fetching data:", error);
+            document.getElementById("weather").innerText = "Error retrieving weather data.";
+        });
 }
 
-function displayWeather(data) {
-    const { name, main, weather } = data;
-    const temperature = main.temp;
-    const humidity = main.humidity;
-    const description = weather[0].description;
-    const icon = `https://openweathermap.org/img/wn/${weather[0].icon}@2x.png`;
 
-    weatherResult.innerHTML = `
-        <h2>${name}</h2>
-        <img src="${icon}" alt="Weather Icon">
-        <p><strong>Temperature:</strong> ${temperature}°C</p>
-        <p><strong>Humidity:</strong> ${humidity}%</p>
-        <p><strong>Condition:</strong> ${description}</p>
-    `;
-    weatherResult.style.display = "block";
-}
