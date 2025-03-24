@@ -1,42 +1,35 @@
 function fetchWeather() {
-    const city = document.getElementById("city").value.trim(); // Fixed: `.trim()` instead of `.tris()`
-    
-    if (!city) { // Fixed: Corrected if condition
-        document.getElementById("weather").innerText = "Please enter a city.";
+    const city = document.getElementById("city").value.trim();
+    const weatherResult = document.getElementById("weather");
+
+    if (!city) {
+        weatherResult.innerText = "Please enter a city name.";
         return;
     }
 
-    const geoApiUrl = `https://geocoding.api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&format=json`; // Fixed: Corrected URL syntax
+    const apiKey = "35b1b3b553b1ba5c4976c78132dd76a9"; // Replace with your API key
+    const apiUrl = `https://api.openweathermap.org/data/2.5/weather?q=${city}&units=metric&appid=${apiKey}`;
 
-    fetch(geoApiUrl)
-        .then(response => response.json())
-        .then(data => {
-            if (!data.results || data.results.length === 0) {
-                document.getElementById("weather").innerText = "City not found.";
-                return;
+    fetch(apiUrl)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error("City not found. Try again.");
             }
-
-            const lat = data.results[0].latitude;
-            const lon = data.results[0].longitude;
-
-            const weatherApiUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`;
-
-            return fetch(weatherApiUrl);
+            return response.json();
         })
-        .then(response => response.json())
-        .then(weatherData => {
-            if (!weatherData || !weatherData.current_weather) {
-                document.getElementById("weather").innerText = "Weather data not available.";
-                return;
-            }
+        .then(data => {
+            const temperature = data.main.temp;
+            const humidity = data.main.humidity;
+            const weatherDescription = data.weather[0].description;
 
-            const { temperature, weathercode } = weatherData.current_weather;
-            document.getElementById("weather").innerText = `Temperature: ${temperature}°C, Condition: ${weathercode}`;
+            weatherResult.innerHTML = `
+                <p>🌡 Temperature: ${temperature}°C</p>
+                <p>💧 Humidity: ${humidity}%</p>
+                <p>🌤 Condition: ${weatherDescription}</p>
+            `;
         })
         .catch(error => {
             console.error("Error fetching data:", error);
-            document.getElementById("weather").innerText = "Error retrieving weather data.";
+            weatherResult.innerText = error.message;
         });
 }
-
-
